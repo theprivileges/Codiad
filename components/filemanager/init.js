@@ -63,22 +63,45 @@
                 });
             $('#file-manager a')
                 .live('dblclick', function() { // Open or Expand
-                    if ($(this)
-                        .hasClass('directory')) {
-                        _this.index($(this)
-                            .attr('data-path'));
-                    } else {
-                        _this.openFile($(this)
-                            .attr('data-path'));
+                    if (!codiad.editor.settings.fileManagerTrigger) {
+                      if ($(this)
+                          .hasClass('directory')) {
+                          _this.index($(this)
+                              .attr('data-path'));
+                      } else {
+                          _this.openFile($(this)
+                              .attr('data-path'));
+                      }
+                      if (!$(this).parent().children("span").hasClass('none')) {
+                          if ($(this).parent().children("span").hasClass('plus')) {
+                              $(this).parent().children("span").removeClass('plus')
+                              $(this).parent().children("span").addClass('minus');
+                          } else {
+                              $(this).parent().children("span").removeClass('minus')
+                              $(this).parent().children("span").addClass('plus');
+                          }
+                      }
                     }
-                    if (!$(this).parent().children("span").hasClass('none')) {
-                        if ($(this).parent().children("span").hasClass('plus')) {
-                            $(this).parent().children("span").removeClass('plus')
-                            $(this).parent().children("span").addClass('minus');
-                        } else {
-                            $(this).parent().children("span").removeClass('minus')
-                            $(this).parent().children("span").addClass('plus');
-                        }
+                })
+                .live('click', function() { // Open or Expand
+                    if (codiad.editor.settings.fileManagerTrigger) {
+                      if ($(this)
+                          .hasClass('directory')) {
+                          _this.index($(this)
+                              .attr('data-path'));
+                      } else {
+                          _this.openFile($(this)
+                              .attr('data-path'));
+                      }
+                      if (!$(this).parent().children("span").hasClass('none')) {
+                          if ($(this).parent().children("span").hasClass('plus')) {
+                              $(this).parent().children("span").removeClass('plus')
+                              $(this).parent().children("span").addClass('minus');
+                          } else {
+                              $(this).parent().children("span").removeClass('minus')
+                              $(this).parent().children("span").addClass('plus');
+                          }
+                      }
                     }
                 })
                 .live("contextmenu", function(e) { // Context Menu
@@ -625,6 +648,15 @@
                 action: 'search',
                 path: path
             });
+            codiad.modal.load_process.done( function() {
+                var lastSearched = JSON.parse(localStorage.getItem("lastSearched"));
+                if(lastSearched) {
+                    $('#modal-content form input[name="search_string"]').val(lastSearched.searchText);
+                    $('#modal-content form input[name="search_file_type"]').val(lastSearched.fileExtension);
+                    $('#modal-content form select[name="search_type"]').val(lastSearched.searchType);
+                    $('#filemanager-search-results').slideDown().html(lastSearched.searchResults);
+                }
+            });
             codiad.modal.hideOverlay();
             var _this = this;
             $('#modal-content form')
@@ -634,10 +666,18 @@
                 e.preventDefault();
                 searchString = $('#modal-content form input[name="search_string"]')
                     .val();
+                fileExtensions=$('#modal-content form input[name="search_file_type"]')
+                     .val();
+                searchFileType=$.trim(fileExtensions);
+                if (searchFileType != '') {
+                    //season the string to use in find command
+                    searchFileType = "\\(" + searchFileType.replace(/\s+/g, "\\|") + "\\)";
+                }
                 searchType = $('#modal-content form select[name="search_type"]')
                     .val();
                 $.post(_this.controller + '?action=search&path=' + path + '&type=' + searchType, {
-                    search_string: searchString
+                    search_string: searchString,
+                    search_file_type: searchFileType
                 }, function(data) {
                     searchResponse = codiad.jsend.parse(data);
                     if (searchResponse != 'error') {
@@ -654,6 +694,7 @@
                         $('#filemanager-search-results')
                             .slideDown()
                             .html(results);
+                        _this.saveSearchResults(searchString, searchType, fileExtensions, results);
                     } else {
                         $('#filemanager-search-results')
                             .slideUp();
@@ -664,6 +705,18 @@
             });
         },
 
+        /////////////////////////////////////////////////////////////////
+        // saveSearchResults
+        /////////////////////////////////////////////////////////////////
+        saveSearchResults: function(searchText, searchType, fileExtensions, searchResults) {
+            var lastSearched = {
+                searchText: searchText,
+                searchType: searchType,
+                fileExtension: fileExtensions,
+                searchResults: searchResults
+            };
+            localStorage.setItem("lastSearched", JSON.stringify(lastSearched));
+        },
         //////////////////////////////////////////////////////////////////
         // Upload
         //////////////////////////////////////////////////////////////////
