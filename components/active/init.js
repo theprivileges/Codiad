@@ -6,9 +6,9 @@
 
 (function(global, $) {
 
-    var EditSession = require('ace/edit_session')
+    var EditSession = ace.require('ace/edit_session')
         .EditSession;
-    var UndoManager = require('ace/undomanager')
+    var UndoManager = ace.require('ace/undomanager')
         .UndoManager;
 
     var codiad = global.codiad;
@@ -87,6 +87,8 @@
                     codiad.editor.setSession(session);
                 }
                 _this.add(path, session, focus);
+                /* Notify listeners. */
+                amplify.publish('active.onOpen', path);
             };
 
             // Assuming the mode file has no dependencies
@@ -446,6 +448,9 @@
         //////////////////////////////////////////////////////////////////
 
         save: function(path) {
+            /* Notify listeners. */
+            amplify.publish('active.onSave', path);
+
             var _this = this;
             if ((path && !this.isOpen(path)) || (!path && !codiad.editor.getActive())) {
                 codiad.message.error(i18n('No Open Files to save'));
@@ -527,6 +532,9 @@
         },
         
         removeAll: function() {
+            /* Notify listeners. */
+            amplify.publish('active.onRemoveAll');
+
             var _this = this;
             var changed = false;
             
@@ -658,7 +666,6 @@
 
                 newSession.on("changeMode", fn);
                 newSession.setMode("ace/mode/" + mode);
-
             } else {
                 // A folder was renamed
                 var newKey;
@@ -669,7 +676,10 @@
                     }
                 }
             }
-            $.get(this.controller + '?action=rename&old_path=' + oldPath + '&new_path=' + newPath);
+            $.get(this.controller + '?action=rename&old_path=' + oldPath + '&new_path=' + newPath, function() {
+                /* Notify listeners. */
+                amplify.publish('active.onRename', {"oldPath": oldPath, "newPath": newPath});
+            });
         },
 
         //////////////////////////////////////////////////////////////////
