@@ -181,6 +181,8 @@
                 .click(function() {
                     _this.contextMenuHide();
                 });
+            /* Notify listeners. */
+            amplify.publish('context-menu.onShow', {e: e, path: path, type: type});
         },
 
         contextMenuHide: function() {
@@ -188,6 +190,8 @@
                 .fadeOut(200);
             $('#file-manager a')
                 .removeClass('context-menu-active');
+            /* Notify listeners. */
+            amplify.publish('context-menu.onHide');
         },
 
         //////////////////////////////////////////////////////////////////
@@ -256,6 +260,7 @@
         //////////////////////////////////////////////////////////////////
 
         index: function(path, rescan) {
+            var _this = this;
             if (rescan === undefined) {
                 rescan = false;
             }
@@ -311,11 +316,11 @@
                         }
                     }
                     node.removeClass('loading');
-                    if (rescan && this.rescanChildren.length > this.rescanCounter) {
-                        this.rescan(this.rescanChildren[this.rescanCounter++]);
+                    if (rescan && _this.rescanChildren.length > _this.rescanCounter) {
+                        _this.rescan(_this.rescanChildren[_this.rescanCounter++]);
                     } else {
-                        this.rescanChildren = [];
-                        this.rescanCounter = 0;
+                        _this.rescanChildren = [];
+                        _this.rescanCounter = 0;
                     }
                 });
             }
@@ -654,7 +659,9 @@
                     $('#modal-content form input[name="search_string"]').val(lastSearched.searchText);
                     $('#modal-content form input[name="search_file_type"]').val(lastSearched.fileExtension);
                     $('#modal-content form select[name="search_type"]').val(lastSearched.searchType);
-                    $('#filemanager-search-results').slideDown().html(lastSearched.searchResults);
+                    if(lastSearched.searchResults != '') {
+                      $('#filemanager-search-results').slideDown().html(lastSearched.searchResults);
+                    }
                 }
             });
             codiad.modal.hideOverlay();
@@ -680,8 +687,8 @@
                     search_file_type: searchFileType
                 }, function(data) {
                     searchResponse = codiad.jsend.parse(data);
+                    var results = '';
                     if (searchResponse != 'error') {
-                        var results = '';
                         $.each(searchResponse.index, function(key, val) {
                             // Cleanup file format
                             if(val['file'].substr(-1) == '/') {
@@ -694,11 +701,11 @@
                         $('#filemanager-search-results')
                             .slideDown()
                             .html(results);
-                        _this.saveSearchResults(searchString, searchType, fileExtensions, results);
                     } else {
                         $('#filemanager-search-results')
                             .slideUp();
                     }
+                    _this.saveSearchResults(searchString, searchType, fileExtensions, results);
                     $('#filemanager-search-processing')
                         .hide();
                 });
