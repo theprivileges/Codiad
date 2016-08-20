@@ -15,14 +15,13 @@
     checkSession();
 
     //////////////////////////////////////////////////////////////////
-    // Check $_GET for incorrect chars or '..' for workspace ecape
+    // Check $_GET for invalid path
     //////////////////////////////////////////////////////////////////
-    //FIXME prevent path-variable from beeing something like ././././ which download all projects
     //TODO check if the User is allowed to access the project
     if(!isset($_GET['path']) 
     		|| preg_match('#^[\\\/]?$#i', trim($_GET['path'])) // download all Projects
     		|| preg_match('#[\:*?\"<>\|]#i', $_GET['path']) //illegal chars in filenames
-    		|| strpos('..', $_GET['path']) !== false ){ // change directory up to escape Workspace
+    		|| substr_count($_GET['path'], './') > 0) { // change directory up to escape Workspace
     	exit('<script>parent.codiad.message.error("Wrong data send")</script>');
     }
 
@@ -48,7 +47,7 @@
           # Execute the tar command and save file
           $filename .= '.tar.gz';
 
-          system("tar -pczf ".$targetPath.$filename." -C ".WORKSPACE." ".$_GET['path']);
+          system("tar -pczf ".escapeshellarg($targetPath.$filename)." -C ".escapeshellarg(WORKSPACE)." ".escapeshellarg($_GET['path']));
           $download_file = $targetPath.$filename;
         }elseif(extension_loaded('zip')){ //Check if zip-Extension is availiable
           //build zipfile
@@ -68,7 +67,7 @@
 
     header('Content-Description: File Transfer');
     header('Content-Type: application/octet-stream');
-    header('Content-Disposition: attachment; filename='.basename($filename));
+    header('Content-Disposition: attachment; filename="'.basename($filename).'"');
     header('Content-Transfer-Encoding: binary');
     header('Expires: 0');
     header('Cache-Control: must-revalidate');

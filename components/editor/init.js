@@ -27,6 +27,7 @@
     // modes available for selecting
     var availableTextModes = new Array(
         'abap',
+		'abc',
         'actionscript',
         'ada',
         'apache_conf',
@@ -51,13 +52,18 @@
         'django',
         'dockerfile',
         'dot',
+		'eiffel',
         'ejs',
+		'elixir',
+		'elm',
         'erlang',
         'forth',
         'ftl',
+		'gcode',
         'gherkin',
         'gitignore',
         'glsl',
+		'gobstones',
         'golang',
         'groovy',
         'haml',
@@ -65,8 +71,10 @@
         'haskell',
         'haxe',
         'html',
+		'html_elixir',
         'html_ruby',
         'ini',
+		'io',
         'jack',
         'jade',
         'java',
@@ -77,6 +85,7 @@
         'jsx',
         'julia',
         'latex',
+		'lean',
         'less',
         'liquid',
         'lisp',
@@ -86,13 +95,17 @@
         'lua',
         'luapage',
         'lucene',
-        'matlab',
         'makefile',
         'markdown',
+		'mask',
+		'matlab',
+		'maze',
         'mel',
+		'mips_assembler',
         'mushcode',
         'mysql',
         'nix',
+		'nsis',
         'objectivec',
         'ocaml',
         'pascal',
@@ -101,12 +114,15 @@
         'php',
         'plain_text',
         'powershell',
+		'praat',
         'prolog',
         'protobuf',
         'python',
         'r',
+		'razor',
         'rdoc',
         'rhtml',
+		'rst',
         'ruby',
         'rust',
         'sass',
@@ -121,20 +137,24 @@
         'soy_template',
         'space',
         'sql',
+		'sqlserver',
         'stylus',
         'svg',
+		'swift',
+		'swig',
         'tcl',
         'tex',
         'text',
         'textile',
         'toml',
-        'typescript',
         'twig',
+		'typescript',
         'vala',
         'vbscript',
         'velocity',
         'verilog',
         'vhdl',
+		'wollok',
         'xml',
         'xquery',
         'yaml'
@@ -369,10 +389,14 @@
             theme: 'twilight',
             fontSize: '13px',
             printMargin: false,
+            printMarginColumn: 80,
             highlightLine: true,
             indentGuides: true,
             wrapMode: false,
             softTabs: false,
+            persistentModal: true,
+            rightSidebarTrigger: false,
+            fileManagerTrigger: false,
             tabSize: 4
         },
    
@@ -417,14 +441,14 @@
 
             var _this = this;
 
-            $.each(['theme', 'fontSize', "tabSize"], function(idx, key) {
+            $.each(['theme', 'fontSize', 'tabSize'], function(idx, key) {
                 var localValue = localStorage.getItem('codiad.editor.' + key);
                 if (localValue !== null) {
                     _this.settings[key] = localValue;
                 }
             });
 
-            $.each(['printMargin', 'highlightLine', 'indentGuides', 'wrapMode', 'rightSidebarTrigger', 'fileManagerTrigger', "softTabs"],
+            $.each(['printMargin', 'highlightLine', 'indentGuides', 'wrapMode', 'rightSidebarTrigger', 'fileManagerTrigger', 'softTabs', 'persistentModal'],
                    function(idx, key) {
                        var localValue =
                            localStorage.getItem('codiad.editor.' + key);
@@ -433,6 +457,40 @@
                        }
                        _this.settings[key] = (localValue == 'true');
                    });
+            $.each(['printMarginColumn'],
+                function(idx, key) {
+                    var localValue =
+                        localStorage.getItem('codiad.editor.' + key);
+                    if (localValue === null) {
+                        return;
+                    }
+                    _this.settings[key] = localValue;
+                });
+        },
+
+        /////////////////////////////////////////////////////////////////
+        //
+        // Apply configuration settings
+        //
+        // Parameters:
+        //   i - {Editor}
+        //
+        /////////////////////////////////////////////////////////////////
+
+        applySettings: function(i) {
+            // Check user-specified settings
+            this.getSettings();
+
+            // Apply the current configuration settings:
+            i.setTheme('ace/theme/' + this.settings.theme);
+            i.setFontSize(this.settings.fontSize);
+            i.setPrintMarginColumn(this.settings.printMarginColumn);
+            i.setShowPrintMargin(this.settings.printMargin);
+            i.setHighlightActiveLine(this.settings.highlightLine);
+            i.setDisplayIndentGuides(this.settings.indentGuides);
+            i.getSession().setUseWrapMode(this.settings.wrapMode);
+            this.setTabSize(this.settings.tabSize, i);
+            this.setSoftTabs(this.settings.softTabs, i);
         },
 
         //////////////////////////////////////////////////////////////////
@@ -507,19 +565,6 @@
 
             i.el = el;
             this.setSession(session, i);
-
-            // Check user-specified settings
-            this.getSettings();
-
-            // Apply the current configuration settings:
-            i.setTheme('ace/theme/' + this.settings.theme);
-            i.setFontSize(this.settings.fontSize);
-            i.setShowPrintMargin(this.settings.printMargin);
-            i.setHighlightActiveLine(this.settings.highlightLine);
-            i.setDisplayIndentGuides(this.settings.indentGuides);
-            i.getSession().setUseWrapMode(this.settings.wrapMode);
-            this.setTabSize(this.settings.tabSize, i);
-            this.setSoftTabs(this.settings.softTabs, i);
 
             this.changeListener(i);
             this.cursorTracking(i);
@@ -787,6 +832,8 @@
                     i.setSession(proxySession);
                 }
             }
+            this.applySettings(i);
+            
             this.setActive(i);
         },
 
@@ -1000,6 +1047,29 @@
 
         //////////////////////////////////////////////////////////////////
         //
+        // Set print margin column
+        //
+        // Parameters:
+        //   p - {Number} print margin column
+        //   i - {Editor}  (If omitted, Defaults to all editors)
+        //
+        //////////////////////////////////////////////////////////////////
+
+        setPrintMarginColumn: function(p, i) {
+            if (i) {
+                i.setPrintMarginColumn(p);
+            } else {
+                this.settings.printMarginColumn = p;
+                this.forEach(function(i) {
+                    i.setPrintMarginColumn(p);
+                });
+            }
+            // LocalStorage
+            localStorage.setItem('codiad.editor.printMarginColumn', p);
+        },
+
+        //////////////////////////////////////////////////////////////////
+        //
         // Show/Hide indent guides
         //
         // Parameters:
@@ -1062,6 +1132,22 @@
             // LocalStorage
             localStorage.setItem('codiad.editor.wrapMode', w);
         },
+        
+        //////////////////////////////////////////////////////////////////
+        //
+        // Set last position of modal to be saved
+        //
+        // Parameters:
+        //   t - {Boolean} (false for Automatic Position, true for Last Position)
+        //   i - {Editor}  (If omitted, Defaults to all editors)
+        //
+        //////////////////////////////////////////////////////////////////
+
+        setPersistentModal: function(t, i) {
+            this.settings.persistentModal = t;
+            // LocalStorage
+            localStorage.setItem('codiad.editor.persistentModal', t);
+        },
 
         //////////////////////////////////////////////////////////////////
         //
@@ -1109,10 +1195,10 @@
 
         setTabSize: function(s, i) {
             if (i) {
-                i.getSession().setTabSize(s);
+                i.getSession().setTabSize(parseInt(s));
             } else {
                 this.forEach(function(i) {
-                    i.getSession().setTabSize(s);
+                    i.getSession().setTabSize(parseInt(s));
                 });
             }
             // LocalStorage
@@ -1275,9 +1361,9 @@
             clearInterval(codiad._cursorPoll);
             codiad._cursorPoll = setInterval(function() {
                 $('#cursor-position')
-                    .html('Ln: '
+                    .html(i18n('Ln') + ': '
                           + (i.getCursorPosition().row + 1)
-                          + ' &middot; Col: '
+                          + ' &middot; ' + i18n('Col') + ': '
                           + i.getCursorPosition().column
                          );
             }, 100);
